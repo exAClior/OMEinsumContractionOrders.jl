@@ -128,6 +128,7 @@ end
 
 
 ############### Sliced methods   ##################
+
 function __timespacereadwrite_complexity(code::SlicedEinsum, size_dict)
     size_dict_sliced = copy(size_dict)
     for l in code.slicing
