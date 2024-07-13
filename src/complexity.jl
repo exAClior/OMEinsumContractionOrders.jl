@@ -40,9 +40,9 @@ function peak_memory(code::SlicedEinsum, size_dict::Dict)
 end
 
 ###################### Time space complexity ###################
-function __timespacereadwrite_complexity(ei::NestedEinsum, size_dict)
+function __timespacereadwrite_complexity(ei::NestedEinsum, size_dict;doLog::Bool=false,costLogs=[[],[],[]])
     log2_sizes = Dict([k=>log2(v) for (k,v) in size_dict])
-    _timespacereadwrite_complexity(ei, log2_sizes)
+    _timespacereadwrite_complexity(ei, log2_sizes;doLog=doLog,costLogs=costLogs)
 end
 
 function __timespacereadwrite_complexity(ei::EinCode, size_dict)
@@ -50,13 +50,13 @@ function __timespacereadwrite_complexity(ei::EinCode, size_dict)
     _timespacereadwrite_complexity(getixsv(ei), getiyv(ei), log2_sizes)
 end
 
-function _timespacereadwrite_complexity(ei::NestedEinsum, log2_sizes::Dict{L,VT}) where {L,VT}
+function _timespacereadwrite_complexity(ei::NestedEinsum, log2_sizes::Dict{L,VT};doLog::Bool=false,costLogs) where {L,VT}
     isleaf(ei) && return (VT(-Inf), VT(-Inf), VT(-Inf))
     tcs = VT[]
     scs = VT[]
     rws = VT[]
     for arg in ei.args
-        tc, sc, rw = _timespacereadwrite_complexity(arg, log2_sizes)
+        tc, sc, rw = _timespacereadwrite_complexity(arg, log2_sizes;doLog=doLog,costLogs=costLogs)
         push!(tcs, tc)
         push!(scs, sc)
         push!(rws, rw)
@@ -65,7 +65,11 @@ function _timespacereadwrite_complexity(ei::NestedEinsum, log2_sizes::Dict{L,VT}
     tc = log2sumexp2([tcs..., tc2])
     sc = max(reduce(max, scs), sc2)
     rw = log2sumexp2([rws..., rw2])
-    @show tc, sc, rw
+    if doLog
+        push!(costLogs[1],tc)
+        push!(costLogs[2],sc)
+        push!(costLogs[3],rw)
+    end
     return tc, sc, rw
 end
 
@@ -129,12 +133,12 @@ end
 
 ############### Sliced methods   ##################
 
-function __timespacereadwrite_complexity(code::SlicedEinsum, size_dict)
+function __timespacereadwrite_complexity(code::SlicedEinsum, size_dict;doLog::Bool=false,costLogs=[[],[],[]])
     size_dict_sliced = copy(size_dict)
     for l in code.slicing
         size_dict_sliced[l] = 1
     end
-    tc, sc, rw = __timespacereadwrite_complexity(code.eins, size_dict_sliced)
+    tc, sc, rw = __timespacereadwrite_complexity(code.eins, size_dict_sliced;doLog=doLog,costLogs=costLogs)
     sliceoverhead = sum(log2.(getindex.(Ref(size_dict), code.slicing)))
     tc + sliceoverhead, sc, rw+sliceoverhead
 end
